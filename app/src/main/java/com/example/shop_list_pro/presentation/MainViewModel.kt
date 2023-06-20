@@ -1,6 +1,5 @@
 package com.example.shop_list_pro.presentation
 
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.example.shop_list_pro.data.ShopListRepositoryImpl
 import com.example.shop_list_pro.domain.AddShopItemUseCase
@@ -26,7 +25,7 @@ class MainViewModel: ViewModel() {
     }
 
     fun editShopItem(shopItem: ShopItem){
-        val edit = shopItem.copy(enable = !shopItem.enable)
+        val edit = shopItem.copy(enabled = !shopItem.enabled)
         editShopItemUseCase.editShopItem(edit)
     }
 
