@@ -3,4 +3,8 @@
     <string name="name">Name</string>
     <string name="count">Count</string>
     <string name="save_button">SAVE</string>
+    <string name="error_input_name">Invalid name</string>
+    <string name="error_input_count">Invalid count</string>
+    <string name="add_button">Добавить</string>
+
 </resources>
