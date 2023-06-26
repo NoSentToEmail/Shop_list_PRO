@@ -8,6 +8,7 @@ import android.text.TextWatcher
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.lifecycle.ViewModelProvider
@@ -15,7 +16,7 @@ import com.example.shop_list_pro.R
 import com.example.shop_list_pro.domain.ShopItem
 import com.google.android.material.textfield.TextInputLayout
 
-class ShopItemActivity : AppCompatActivity() {
+class ShopItemActivity : AppCompatActivity(), ShopItemFragment.OnEditingFinishedListener {
 
 //    private lateinit var viewModel: ShopItemViewModel
 //    private lateinit var title_name: TextInputLayout
@@ -47,19 +48,25 @@ class ShopItemActivity : AppCompatActivity() {
 //        }
 //        observeViewModel()
 
+        if (savedInstanceState == null) {
+            val fragment = when (screenMode) {
+                MODE_EDIT -> ShopItemFragment.newInstansceEditItem(shopItemId)
+                MODE_ADD -> ShopItemFragment.newInstansceAddItem()
+                else -> throw RuntimeException("Unknown screen mode $screenMode")
 
-        val fragment =  when(screenMode){
-            MODE_EDIT -> ShopItemFragment.newInstansceEditItem(shopItemId)
-            MODE_ADD -> ShopItemFragment.newInstansceAddItem()
-            else -> throw RuntimeException("Unknown screen mode $screenMode")
-
+            }
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.shop_item_container, fragment)
+                .commit()
         }
-        supportFragmentManager.beginTransaction()
-            .add(R.id.shop_item_container, fragment)
-            .commit()
     }
 
-//    private fun observeViewModel() {
+    override fun onEditingFinished() {
+        Toast.makeText(this, "Success", Toast.LENGTH_SHORT).show()
+        supportFragmentManager.popBackStack()
+        finish()
+    }
+    //    private fun observeViewModel() {
 //        viewModel.errorInputCount.observe(this) {
 //            val message = if (it) {
 //                getString(R.string.error_input_count)
