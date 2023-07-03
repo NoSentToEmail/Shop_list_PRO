@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,9 +15,12 @@ import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import com.example.shop_list_pro.R
 import com.example.shop_list_pro.domain.ShopItem
 import com.google.android.material.textfield.TextInputLayout
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class ShopItemFragment : Fragment() {
 
@@ -36,7 +40,7 @@ class ShopItemFragment : Fragment() {
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
-        if(context is OnEditingFinishedListener){
+        if (context is OnEditingFinishedListener) {
             onEditingFinishedListener = context
         } else {
             throw java.lang.RuntimeException("Activity must implement OnEditingFinishedListener")
@@ -60,6 +64,8 @@ class ShopItemFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+
+        parseParams()
         viewModel = ViewModelProvider(this)[ShopItemViewModel::class.java]
         title_name = view.findViewById(R.id.title_name)
         title_count = view.findViewById(R.id.title_count)
@@ -96,7 +102,7 @@ class ShopItemFragment : Fragment() {
         }
 
         viewModel.finishScreen.observe(viewLifecycleOwner) {
-            onEditingFinishedListener.onEditingFinished()
+            activity?.onBackPressed()
         }
     }
 
@@ -130,13 +136,16 @@ class ShopItemFragment : Fragment() {
             viewModel.addShopItem(et_name.text?.toString(), et_count.text?.toString())
         }
         add_button.setOnClickListener() {
-            viewModel.addShopItemElement(et_name.text?.toString(), et_count.text?.toString())
-            Toast.makeText(context, "Success", Toast.LENGTH_SHORT).show()
+            viewModel.addShopItemElement(
+                et_name.text?.toString(),
+                et_count.text?.toString()
+            )
             et_name.text = null
             et_count.text = null
+            Toast.makeText(context, getString(R.string.add), Toast.LENGTH_SHORT).show()
         }
-
     }
+
 
     private fun launchEditMode() {
         val saveButton = view?.findViewById<Button>(R.id.save_button)
@@ -148,15 +157,17 @@ class ShopItemFragment : Fragment() {
         addButton?.visibility = View.GONE
 
         viewModel.getShopItem(shopItemId)
+
+
         viewModel.shopItem.observe(viewLifecycleOwner) {
-            et_name.setText(it.name.toString())
+            et_name.setText(it.name)
             et_count.setText(it.count.toString())
         }
+
         save_button.setOnClickListener() {
             viewModel.editShopItem(et_name.text?.toString(), et_count.text?.toString())
 
         }
-
     }
 
     private fun parseParams() {
@@ -191,10 +202,12 @@ class ShopItemFragment : Fragment() {
 
         fun newInstansceAddItem(): ShopItemFragment {
             val args = Bundle().apply {
-                putString(EXTRA_SCREEN_MODE, MODE_ADD) }
+                putString(EXTRA_SCREEN_MODE, MODE_ADD)
+            }
 
             return ShopItemFragment().apply {
-                arguments = args }
+                arguments = args
+            }
         }
 
         fun newInstansceEditItem(shopItemId: Int): ShopItemFragment {

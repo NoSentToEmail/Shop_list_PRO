@@ -1,25 +1,30 @@
 package com.example.shop_list_pro.presentation.EditItemActivity
 
+import android.app.Application
+import android.util.Log
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.shop_list_pro.data.ShopListDataBase
 import com.example.shop_list_pro.data.ShopListRepositoryImpl
 import com.example.shop_list_pro.domain.AddShopItemUseCase
 import com.example.shop_list_pro.domain.EditShopItemUseCase
 import com.example.shop_list_pro.domain.GetObjectFromIDShopItemUseCase
 import com.example.shop_list_pro.domain.ShopItem
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-class ShopItemViewModel : ViewModel() {
+class ShopItemViewModel(application: Application) : AndroidViewModel(application) {
 
     //Пробуем ГПТ
     private var shopItemAdded = false
 
-
-    private val repository = ShopListRepositoryImpl
-
-    private val getShopItemtUseCase = GetObjectFromIDShopItemUseCase(repository)
-    private val editShopItemUseCase = EditShopItemUseCase(repository)
-    private val addShopItemUseCase = AddShopItemUseCase(repository)
+    private val database: ShopListDataBase = ShopListDataBase.getInstance(application)
+    private var shopList: LiveData<List<ShopItem>> = database.shopItemDao().getShopList()
 
 
     private val _errorInputName = MutableLiveData<Boolean>()
@@ -41,53 +46,64 @@ class ShopItemViewModel : ViewModel() {
     val finishScreen: LiveData<Unit>
         get() = _finishScreen
 
+    private var getShopItemJob: Job? = null
 
-    fun getShopItem(shopItemId: Int) {
-        val item = getShopItemtUseCase.getShopItem(shopItemId)
-        _shopItem.value = item
+    fun getShopItem(shopItemId: Int)  = viewModelScope.launch(Dispatchers.IO) {
+        getShopItemJob?.cancel() // Отменить предыдущую задачу, если она выполняется
+        getShopItemJob = viewModelScope.launch(Dispatchers.IO) {
+            val item = database.shopItemDao().getShopItem(shopItemId = shopItemId)
+            _shopItem.postValue(item)
+        }
     }
 
 
     fun addShopItem(inputName: String?, inputCount: String?) {
-        val name = parseName(inputName)
-        val count = parseCount(inputCount)
-        val fieldsValid = validateInput(name, count)
-        if (fieldsValid) {
-            val shopItem = ShopItem(name, count, true)
-            addShopItemUseCase.addShopList(shopItem)
-            resetFinishScreen()
+        viewModelScope.launch {
+            val name = parseName(inputName)
+            val count = parseCount(inputCount)
+            val fieldsValid = validateInput(name, count)
+            if (fieldsValid) {
+                val shopItem = ShopItem(name, count, true)
+                withContext(Dispatchers.IO) {
+                    database.shopItemDao().addShopItem(shopItem)
+                }
+                resetFinishScreen()
+            }
+            resetFinishScreenFull()
         }
-        resetFinishScreenFull()
-
     }
 
     fun addShopItemElement(inputName: String?, inputCount: String?) {
-        val name = parseName(inputName)
-        val count = parseCount(inputCount)
-        val fieldsValid = validateInput(name, count)
-        if (fieldsValid) {
-            val shopItem = ShopItem(name, count, true)
-            addShopItemUseCase.addShopList(shopItem)
-
+        viewModelScope.launch {
+            val name = parseName(inputName)
+            val count = parseCount(inputCount)
+            val fieldsValid = validateInput(name, count)
+            if (fieldsValid) {
+                val shopItem = ShopItem(name, count, true)
+                withContext(Dispatchers.IO) {
+                    database.shopItemDao().addShopItem(shopItem)
+                }
+            }
+//            shopItemAdded = true
         }
-        shopItemAdded = true
-
     }
 
 
     fun editShopItem(name: String?, count: String?) {
-        val name = parseName(name)
-        val count = parseCount(count)
-        val fieldsValid = validateInput(name, count)
-        if (fieldsValid) {
-            _shopItem.value?.let {
-                val item = it.copy(name = name, count = count)
-                editShopItemUseCase.editShopItem(item)
-                resetFinishScreenFull()
+        viewModelScope.launch {
+            val name = parseName(name)
+            val count = parseCount(count)
+            val fieldsValid = validateInput(name, count)
+            if (fieldsValid) {
+                withContext(Dispatchers.IO) {
+                    _shopItem.value?.let {
+                        val item = it.copy(name = name, count = count)
+                        database.shopItemDao().editShopItem(item)
+                        resetFinishScreenFull()
+                    }
+                }
             }
         }
-
-
     }
 
 
@@ -99,7 +115,6 @@ class ShopItemViewModel : ViewModel() {
         return try {
             inputName?.trim()?.toInt() ?: 0
         } catch (e: Exception) {
-            //    Toast.makeText(this, "ERROR input Count $e", Toast.LENGTH_SHORT).show()
             0
         }
     }
@@ -107,35 +122,35 @@ class ShopItemViewModel : ViewModel() {
     private fun validateInput(name: String, count: Int): Boolean {
         var result = true
         if (name.isBlank()) {
-            //  Toast.makeText(this, "ERROR input Name", Toast.LENGTH_SHORT).show()
-            _errorInputName.value = true
+            _errorInputName.postValue(true)
             result = false
         }
         if (count <= 0) {
-            //    Toast.makeText(this, "ERROR input Count", Toast.LENGTH_SHORT).show()
-            _errorInputCount.value = true
+            _errorInputCount.postValue(true)
             result = false
         }
         return result
     }
 
     fun resetErrorInputName() {
-        _errorInputName.value = false
+        _errorInputName.postValue(false)
     }
 
     fun resetErrorInputCount() {
-        _errorInputCount.value = false
+        _errorInputCount.postValue(false)
     }
 
     fun resetFinishScreen() {
         if (shopItemAdded) {
             // Вызывать метод resetFinishScreen() только если элемент был добавлен
-            _finishScreen.value = Unit
+            _finishScreen.postValue(Unit)
         }
     }
 
     fun resetFinishScreenFull() {
-        _finishScreen.value = Unit
+        _finishScreen.postValue(Unit)
     }
 }
+
+
 

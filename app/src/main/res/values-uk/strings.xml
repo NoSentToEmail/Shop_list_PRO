@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Список Pro</string>
+    <string name="name">Назва</string>
+    <string name="count">Кількість</string>
+    <string name="save_button">Зберегти</string>
+    <string name="error_input_name">Введіть назву</string>
+    <string name="error_input_count">Введіть кількість</string>
+    <string name="add_button">Додати</string>
+    <string name="add">Додано</string>
+</resources>
