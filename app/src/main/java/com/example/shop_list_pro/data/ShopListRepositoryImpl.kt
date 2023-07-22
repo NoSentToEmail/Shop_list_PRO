@@ -1,47 +1,39 @@
 package com.example.shop_list_pro.data
 
-import android.content.Context
-import android.util.Log
+import android.app.Application
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.map
 import com.example.shop_list_pro.domain.ShopItem
 import com.example.shop_list_pro.domain.ShopListRepository
-import kotlin.random.Random
 
-object ShopListRepositoryImpl : ShopListRepository {
-    private lateinit var shopListLiveData: LiveData<List<ShopItem>>
-    private lateinit var database: ShopListDataBase
+class ShopListRepositoryImpl(application: Application) : ShopListRepository {
 
 
-    private var autoIncrementId = 0
-    fun initialize(context: Context) {
-        database = ShopListDataBase.getInstance(context)
-        shopListLiveData = database.shopItemDao().getShopList()
+    private val shopItemDao = ShopListDataBase.getInstance(application).shopItemDao()
+    private val mapper = ShopListMapper()
+
+
+    override suspend fun addShopItem(shopItem: ShopItem) {
+        shopItemDao.addShopItem(mapper.mapEntityToDbModel(shopItem))
     }
 
-    override fun addShopItem(shopItem: ShopItem) {
-        val entity = ShopItem(name = shopItem.name, count = shopItem.count, enabled = shopItem.enabled)
-        database.shopItemDao().addShopItem(entity)
+    override suspend fun deleteShopItem(shopItem: ShopItem) {
+        shopItemDao.deleteShopItem(shopItem.id)
     }
 
-    override fun deleteShopItem(shopItem: ShopItem) {
-        val entity = ShopItem(id = shopItem.id, name = shopItem.name, count = shopItem.count, enabled = shopItem.enabled)
-        database.shopItemDao().deleteShopItem(entity)
+    override suspend fun editShopItem(shopItem: ShopItem) {
+        shopItemDao.addShopItem(mapper.mapEntityToDbModel(shopItem))
     }
 
-    override fun editShopItem(shopItem: ShopItem) {
-        val entity = ShopItem(id = shopItem.id, name = shopItem.name, count = shopItem.count, enabled = shopItem.enabled)
-        database.shopItemDao().editShopItem(entity)
+    override suspend fun getShopItem(shopItemId: Int): ShopItem {
+        val dbModel = shopItemDao.getShopItem(shopItemId)
+        return mapper.mapDbModelToEntity(dbModel)
     }
 
-    override fun getShopItem(shopItemId: Int): ShopItem {
-        val entity = database.shopItemDao().getShopItem(shopItemId)
-        return ShopItem(entity.name, entity.count, entity.enabled, entity.id)
+    override fun getShopList(): LiveData<List<ShopItem>> = shopItemDao.getShopList().map{
+        mapper.mapListDbModelToListEntity(it)
     }
 
-    override fun getShopList(): LiveData<List<ShopItem>> {
-        return shopListLiveData
-    }
 }
 
 

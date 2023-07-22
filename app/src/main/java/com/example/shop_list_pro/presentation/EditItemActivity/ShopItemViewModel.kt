@@ -1,13 +1,10 @@
 package com.example.shop_list_pro.presentation.EditItemActivity
 
 import android.app.Application
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.shop_list_pro.data.ShopListDataBase
 import com.example.shop_list_pro.data.ShopListRepositoryImpl
 import com.example.shop_list_pro.domain.AddShopItemUseCase
 import com.example.shop_list_pro.domain.EditShopItemUseCase
@@ -16,15 +13,17 @@ import com.example.shop_list_pro.domain.ShopItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class ShopItemViewModel(application: Application) : AndroidViewModel(application) {
 
-    //Пробуем ГПТ
     private var shopItemAdded = false
 
-    private val database: ShopListDataBase = ShopListDataBase.getInstance(application)
-    private var shopList: LiveData<List<ShopItem>> = database.shopItemDao().getShopList()
+    //Пробуем ГПТ
+    private val repository = ShopListRepositoryImpl(application)
+
+    private val getShopItemUseCase = GetObjectFromIDShopItemUseCase(repository)
+    private val addShopItemUseCase = AddShopItemUseCase(repository)
+    private val editShopItemUseCase = EditShopItemUseCase(repository)
 
 
     private val _errorInputName = MutableLiveData<Boolean>()
@@ -48,59 +47,55 @@ class ShopItemViewModel(application: Application) : AndroidViewModel(application
 
     private var getShopItemJob: Job? = null
 
-    fun getShopItem(shopItemId: Int)  = viewModelScope.launch(Dispatchers.IO) {
+    fun getShopItem(shopItemId: Int) {
         getShopItemJob?.cancel() // Отменить предыдущую задачу, если она выполняется
         getShopItemJob = viewModelScope.launch(Dispatchers.IO) {
-            val item = database.shopItemDao().getShopItem(shopItemId = shopItemId)
+            val item = getShopItemUseCase.getShopItem(shopItemId)
             _shopItem.postValue(item)
         }
     }
 
 
     fun addShopItem(inputName: String?, inputCount: String?) {
-        viewModelScope.launch {
-            val name = parseName(inputName)
-            val count = parseCount(inputCount)
-            val fieldsValid = validateInput(name, count)
-            if (fieldsValid) {
+        val name = parseName(inputName)
+        val count = parseCount(inputCount)
+        val fieldsValid = validateInput(name, count)
+        if (fieldsValid) {
+            viewModelScope.launch(Dispatchers.IO) {
                 val shopItem = ShopItem(name, count, true)
-                withContext(Dispatchers.IO) {
-                    database.shopItemDao().addShopItem(shopItem)
-                }
+                addShopItemUseCase.addShopList(shopItem)
                 resetFinishScreen()
             }
-            resetFinishScreenFull()
+
         }
+        resetFinishScreenFull()
     }
 
     fun addShopItemElement(inputName: String?, inputCount: String?) {
-        viewModelScope.launch {
-            val name = parseName(inputName)
-            val count = parseCount(inputCount)
-            val fieldsValid = validateInput(name, count)
-            if (fieldsValid) {
+        val name = parseName(inputName)
+        val count = parseCount(inputCount)
+        val fieldsValid = validateInput(name, count)
+        if (fieldsValid) {
+            viewModelScope.launch(Dispatchers.IO) {
                 val shopItem = ShopItem(name, count, true)
-                withContext(Dispatchers.IO) {
-                    database.shopItemDao().addShopItem(shopItem)
-                }
+                editShopItemUseCase.editShopItem(shopItem)
             }
-//            shopItemAdded = true
         }
+//            shopItemAdded = true
+
     }
 
 
     fun editShopItem(name: String?, count: String?) {
-        viewModelScope.launch {
-            val name = parseName(name)
-            val count = parseCount(count)
-            val fieldsValid = validateInput(name, count)
-            if (fieldsValid) {
-                withContext(Dispatchers.IO) {
-                    _shopItem.value?.let {
-                        val item = it.copy(name = name, count = count)
-                        database.shopItemDao().editShopItem(item)
-                        resetFinishScreenFull()
-                    }
+        val name = parseName(name)
+        val count = parseCount(count)
+        val fieldsValid = validateInput(name, count)
+        if (fieldsValid) {
+            _shopItem.value?.let {
+                viewModelScope.launch(Dispatchers.IO) {
+                    val item = it.copy(name = name, count = count)
+                    editShopItemUseCase.editShopItem(item)
+                    resetFinishScreenFull()
                 }
             }
         }
@@ -151,6 +146,3 @@ class ShopItemViewModel(application: Application) : AndroidViewModel(application
         _finishScreen.postValue(Unit)
     }
 }
-
-
-
